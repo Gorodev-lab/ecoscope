@@ -27,6 +27,7 @@ TimeStepAnnotation: TypeAlias = Annotated[
     float,
     AdvancedField(
         default=60.0,
+        ge=1.0,
         title="Bridge Integration Time Step (seconds)",
         description=(
             "How finely each movement segment is broken into steps when computing the"

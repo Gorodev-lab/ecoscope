@@ -1,5 +1,6 @@
 import geopandas as gpd  # type: ignore[import-untyped]
 import pytest
+from shapely.geometry import box
 
 from ecoscope.platform.tasks.analysis import create_meshgrid
 from ecoscope.platform.tasks.analysis._time_density import (
@@ -33,8 +34,10 @@ def test_create_meshgrid():
 
 
 def test_create_meshgrid_tiny_cell_size_errors():
-    bounds = random_3857_rectangle(5000, 5000, 5000, 5000, utm_safe=True)
-    aoi = gpd.GeoDataFrame(geometry=[bounds], crs="EPSG:3857")
+    # 60km x 60km: with cell_size=1.0 this exceeds the extent-based cell
+    # budget (~3e9 cells), so the extent guard fires instead of the param
+    # bound, which the 1.0 cell size already passes.
+    aoi = gpd.GeoDataFrame(geometry=[box(0, 0, 60000, 60000)], crs="EPSG:3857")
 
     with pytest.raises(
         ValueError,
@@ -42,5 +45,5 @@ def test_create_meshgrid_tiny_cell_size_errors():
     ):
         create_meshgrid(
             aoi,
-            auto_scale_or_custom_cell_size=CustomGridCellSize(grid_cell_size=0.01),
+            auto_scale_or_custom_cell_size=CustomGridCellSize(grid_cell_size=1.0),
         )

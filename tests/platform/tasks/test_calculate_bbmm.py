@@ -2,9 +2,10 @@ from importlib.resources import files
 
 import geopandas as gpd  # type: ignore[import-untyped]
 import pytest
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, ValidationError
 
 from ecoscope.platform.tasks.analysis import calculate_brownian_bridge_range
+from ecoscope.platform.tasks.analysis._bbmm import TimeStepAnnotation
 from ecoscope.platform.tasks.analysis._time_density import TimeDensityReturnGDF
 
 
@@ -43,3 +44,11 @@ def test_calculate_brownian_bridge_range_area_increases_with_percentile(trajecto
 def test_calculate_brownian_bridge_range_raises_on_empty_percentiles(trajectory_gdf):
     with pytest.raises(ValueError, match="cannot be empty"):
         calculate_brownian_bridge_range(trajectory_gdf, crs="ESRI:102022", percentiles=[])
+
+
+def test_bbmm_time_step_bounds():
+    ta = TypeAdapter(TimeStepAnnotation)
+
+    with pytest.raises(ValidationError):
+        ta.validate_python(0.001)
+    assert ta.validate_python(60.0) == 60.0

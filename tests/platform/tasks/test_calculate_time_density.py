@@ -3,7 +3,7 @@ from importlib.resources import files
 import geopandas as gpd  # type: ignore[import-untyped]
 import numpy as np
 import pytest
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, ValidationError
 
 from ecoscope.platform.tasks.analysis import (
     calculate_elliptical_time_density,
@@ -15,6 +15,7 @@ from ecoscope.platform.tasks.analysis._create_meshgrid import (
 from ecoscope.platform.tasks.analysis._time_density import (
     AutoScaleGridCellSize,
     CustomGridCellSize,
+    ExpansionFactorAnnotation,
     TimeDensityReturnGDF,
 )
 
@@ -163,3 +164,17 @@ def test_calculate_linear_time_density_custom_auto_scale_raises_empty_percentile
             meshgrid=grid,
             percentiles=[],
         )
+
+
+def test_time_density_param_bounds():
+    ta = TypeAdapter(ExpansionFactorAnnotation)
+
+    with pytest.raises(ValidationError):
+        CustomGridCellSize(grid_cell_size=0.001)
+    assert CustomGridCellSize(grid_cell_size=1.0).grid_cell_size == 1.0
+
+    with pytest.raises(ValidationError):
+        ta.validate_python(0.5)
+    with pytest.raises(ValidationError):
+        ta.validate_python(100.0)
+    assert ta.validate_python(1.3) == 1.3

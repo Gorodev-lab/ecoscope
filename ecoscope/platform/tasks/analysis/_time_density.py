@@ -56,10 +56,10 @@ class CustomGridCellSize(BaseModel):
                 " coordinate reference system set below). A smaller grid cell size provides more"
                 " detail, while a larger size generalizes the data."
             ),
-            gt=0,
+            ge=1,
             lt=10000,
             default=5000,
-            json_schema_extra={"exclusiveMinimum": 0, "exclusiveMaximum": 10000},
+            json_schema_extra={"minimum": 1, "exclusiveMaximum": 10000},
         ),
     ] = 5000
 
@@ -119,6 +119,8 @@ ExpansionFactorAnnotation: TypeAlias = Annotated[
     float,
     AdvancedField(
         default=1.05,
+        ge=1.0,
+        le=10.0,
         title="Shape Buffer Expansion Factor",
         description=(
             "Controls how far time density values spread across the grid, affecting the smoothness of the output."
