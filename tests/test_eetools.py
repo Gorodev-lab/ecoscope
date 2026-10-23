@@ -1,4 +1,5 @@
 import ee
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -191,3 +192,18 @@ def test_match_gdf_to_img_coll_ids_by_day(movebank_relocations_fixed_subset, n_b
     assert results[1] == output_list[1]
     # pm
     assert results[2] == output_list[2]
+
+
+def test_midpoint_time_bins_sorted():
+    times = np.array([1000, 3000, 5000])
+    bins = ecoscope.io.eetools._midpoint_time_bins(times)
+    assert bins.is_monotonic_increasing
+    assert len(bins) == len(times) + 1
+    expected = pd.to_datetime([2000, 4000], unit="ms", utc=True)
+    assert (bins[1:-1] == expected).all()
+    assert pd.cut(pd.to_datetime([1500, 4500], unit="ms", utc=True), bins, labels=False).tolist() == [0, 2]
+
+
+def test_midpoint_time_bins_unsorted_raises():
+    with pytest.raises(ValueError, match="sorted"):
+        ecoscope.io.eetools._midpoint_time_bins(np.array([3000, 1000, 2000]))

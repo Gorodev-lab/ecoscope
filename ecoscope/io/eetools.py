@@ -271,6 +271,26 @@ def label_gdf_with_temporal_image_collection_by_feature(
     return result
 
 
+def _midpoint_time_bins(times: np.ndarray) -> pd.DatetimeIndex:
+    """
+    Build bin edges for `pd.cut` from sorted image start times (epoch ms): the
+    midpoints between consecutive images, bounded by the epoch and `pd.Timestamp.max`.
+
+    Raises
+    ------
+    ValueError
+        If `times` is not sorted in increasing order, since `pd.cut` requires monotonic bins.
+    """
+    times = np.asarray(times, dtype="float64")
+    if len(times) > 1 and np.any(np.diff(times) < 0):
+        raise ValueError("Image times must be sorted in increasing order by `system:time_start`.")
+    return pd.to_datetime(
+        np.concatenate(([0], (times[:-1] + times[1:]) / 2, [pd.Timestamp.max.timestamp() * 1000 - 1])),
+        unit="ms",
+        utc=True,
+    )
+
+
 @backoff.on_exception(
     backoff.expo,
     ee.EEException,
@@ -285,15 +305,14 @@ def label_gdf_with_temporal_image_collection_by_timespan(
     df_chunk_size=25000,
     max_workers=1,
 ) -> pd.DataFrame:
+    # `time_bins` below are built from consecutive midpoints, so the collection
+    # must be sorted by `system:time_start` for the bins to be monotonic and for
+    # each bin index to line up with the same position in `img_list`.
+    img_coll = img_coll.sort("system:time_start")
     img_list = img_coll.toList(img_coll.size())
 
-    # @TODO sort. Current code assumes img_coll is sorted by `system:time_start`
     times = np.array(img_coll.aggregate_array("system:time_start").getInfo())
-    time_bins = pd.to_datetime(
-        np.concatenate(([0], (times[:-1] + times[1:]) / 2, [pd.Timestamp.max.timestamp() * 1000 - 1])),
-        unit="ms",
-        utc=True,
-    )
+    time_bins = _midpoint_time_bins(times)
 
     max_idx = len(times)
     imgs, chunks = zip(
